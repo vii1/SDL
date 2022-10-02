@@ -3198,6 +3198,47 @@ dnl This is used on Linux for glibc binary compatibility (Doh!)
     fi
 }
 
+dnl Determine whether the compiler can produce MS-DOS executables
+CheckDOS()
+{
+    AC_MSG_CHECKING(DOS compiler support)
+    have_dos=no
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <dos.h>
+#include <bios.h>
+#include <dpmi.h>
+#if !defined(__MSDOS__) && !defined(__MSDOS)
+#error This is not MS-DOS
+#endif
+    ]],[])], [have_dos=yes],[])
+    AC_MSG_RESULT($have_dos)
+    if test x$have_dos != xyes; then
+       AC_MSG_ERROR([
+*** Your compiler ($CC) does not produce DOS executables!
+       ])
+    fi
+
+    AC_MSG_CHECKING(Compiler is DJGPP)
+    have_djgpp=no
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <go32.h>
+#if !defined(__GNUC__) || (!defined(__GO32__) && !defined(__GO32)) || (!defined(__DJGPP__) && !defined(__DJGPP))
+#error This is not DJGPP
+#endif
+    ]],[])], [have_djgpp=yes],[])
+    AC_MSG_RESULT($have_djgpp)
+    if test x$have_djgpp != xyes; then
+       AC_MSG_ERROR([
+*** Your compiler ($CC) is not DJGPP. Only DJGPP is supported for DOS at the moment.
+       ])
+    fi
+
+    # TODO: check if this is needed
+    #CheckStackBoundary
+
+    # TODO: add DOS-specific headers checks
+}
+
 dnl Determine whether the compiler can produce Windows executables
 CheckWINDOWS()
 {
@@ -3955,6 +3996,87 @@ case "$host" in
         SOURCES="$SOURCES $srcdir/src/core/linux/SDL_sandbox.c"
         SOURCES="$SOURCES $srcdir/src/core/unix/*.c"
         ;;
+	*-*-msdosdjgpp)
+		ARCH=msdos
+		if test "$DJDIR" != ""; then
+			# Install on DJGPP dir
+			ac_default_prefix=$DJDIR
+		elif test "$build" != "$host"; then # cross-compiling
+            # Default cross-compile location
+            ac_default_prefix=/usr/local/cross-tools/$host
+        else
+            # Look for the location of the tools and install there
+            if test "$BUILD_PREFIX" != ""; then
+                ac_default_prefix=$BUILD_PREFIX
+            fi
+        fi
+        # TODO: DXE or dll loader
+		have_loadso=no
+        CheckDeclarationAfterStatement
+        CheckDummyVideo
+        CheckOffscreenVideo
+        CheckDiskAudio
+        CheckDummyAudio
+		CheckDOS
+		#CheckOpenGL
+        #CheckPTH
+        # Set up the core platform files
+        #SOURCES="$SOURCES $srcdir/src/core/dos/*.c"
+        # Set up files for the video library
+#        if test x$enable_video = xyes; then
+#            AC_DEFINE(SDL_VIDEO_DRIVER_DOS, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/video/dos/*.c"
+#            have_video=yes
+#            AC_ARG_ENABLE(vesa,
+#[AS_HELP_STRING([--enable-vesa], [enable the VESA video driver [default=yes]])],
+#                                , enable_vesa=yes)
+#            if test x$enable_vesa = xyes; then
+#                AC_DEFINE(SDL_VIDEO_DRIVER_VESA, 1, [ ])
+#                SUMMARY_video="${SUMMARY_video} vesa"
+#            fi
+#        fi
+        # Set up files for the audio library
+        #if test x$enable_audio = xyes; then
+        #    AC_DEFINE(SDL_AUDIO_DRIVER_JUDAS, 1, [ ])
+        #    SUMMARY_audio="${SUMMARY_audio} judas"
+        #    SOURCES="$SOURCES $srcdir/src/audio/judas/*.c"
+        #    have_audio=yes
+        #fi
+        # Set up files for the filesystem library
+#        if test x$enable_filesystem = xyes; then
+#            AC_DEFINE(SDL_FILESYSTEM_DOS, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/filesystem/dos/SDL_sysfilesystem.c"
+#            have_filesystem=yes
+#        fi
+#        # Set up files for the thread library
+#        if test x$enable_threads = xyes; then
+#            AC_DEFINE(SDL_THREAD_GENERIC_COND_SUFFIX, 1, [ ])
+#            AC_DEFINE(SDL_THREAD_DOS, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/thread/dos/*.c"
+#            SOURCES="$SOURCES $srcdir/src/thread/generic/SDL_syscond.c"
+#            have_threads=yes
+#        fi
+#        # Set up files for the timer library
+#        if test x$enable_timers = xyes; then
+#            AC_DEFINE(SDL_TIMER_DOS, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/timer/dos/*.c"
+#            have_timers=yes
+#        fi
+#        # Set up files for the shared object loading library
+#        if test x$enable_loadso = xyes -a x$have_loadso = xyes; then
+#            AC_DEFINE(SDL_LOADSO_DOS, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/loadso/dos/*.c"
+#        fi
+
+        #EXTRA_LDFLAGS="$EXTRA_LDFLAGS -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion $LIBUUID"
+        #BUILD_LDFLAGS="$BUILD_LDFLAGS -Wc,-static-libgcc"
+        # The Windows platform requires special setup
+        # VERSION_SOURCES="$srcdir/src/main/windows/*.rc"
+        # SDLMAIN_SOURCES="$srcdir/src/main/windows/*.c"
+        # SDL_CFLAGS="$SDL_CFLAGS -Dmain=SDL_main"
+        # SDL_LIBS="-lSDL2main $SDL_LIBS -mwindows"
+        ;;
+        
     *-*-cygwin* | *-*-mingw*)
         ARCH=win32
         if test "$build" != "$host"; then # cross-compiling

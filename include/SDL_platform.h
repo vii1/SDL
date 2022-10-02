@@ -221,6 +221,11 @@
 #define __VITA__ 1
 #endif
 
+#if defined(__MSDOS__)
+#undef __MSDOS__
+#define __MSDOS__ 1
+#endif
+
 #include "begin_code.h"
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
